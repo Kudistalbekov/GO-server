@@ -18,7 +18,7 @@ type Response struct {
 }
 
 //RegPost - registers with the Post requests
-func RegPost(w http.ResponseWriter, r *http.Request) {
+func RegPost(w http.ResponseWriter, r *http.Request) { //w kuda  ,r otkuda
 	op := "handlers/RegPost"
 	//below : will determine what format request is
 	if "application/json" == r.Header.Get("Content-Type") {
@@ -63,6 +63,15 @@ func RegPost(w http.ResponseWriter, r *http.Request) {
 //RegGet going to send data to user
 //using gmail
 func RegGet(w http.ResponseWriter, r *http.Request) {
-	op := "handlers/ReqGet"
+	user := &models.User{}
+	email := r.FormValue("email")
+	db := conn.DBconnect()
+	defer db.Close()
+	row := db.QueryRowx("select * from users where email=$1", email)
+	err := row.Scan(user)
+	if err != nil {
+		log.Fatal(err)
+	}
+	json.NewEncoder(w).Encode(user)
 
 }
