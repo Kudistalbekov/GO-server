@@ -1,20 +1,21 @@
 package conn
 
 import (
-	"database/sql"
+	"fmt"
 	"log"
-	_"github.com/jmoiron/sqlx"
+
+	"github.com/jmoiron/sqlx"
 )
 
-func DBconnect()*sqlx.DB {
-	op:="DBconnect"
-	db,err:=sqlx.Open("postgres","user=posgres dbname=test password=164137 sslmode=disable")
-	err!=nil{
-		log.Fatal(err+op)
+//DBconnect connects to database
+func DBconnect() *sqlx.DB {
+	db, err := sqlx.Open("postgres", "user=kudi dbname=test password = '164137' sslmode=disable")
+	if err != nil {
+		log.Fatal(err)
 	}
-	err=db.Ping()
-	if  err!={
-		log.Fatal(err+op)
+	err = db.Ping()
+	if err != nil {
+		log.Fatal(err)
 	}
 	fmt.Println("db connected")
 	return db
