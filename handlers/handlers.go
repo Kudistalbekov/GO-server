@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -8,6 +9,9 @@ import (
 	"projects/server/conn"
 	"projects/server/models"
 	"time"
+
+	"github.com/pkg/errors"
+	"gopkg.in/guregu/null.v3/zero"
 )
 
 //Response for client
@@ -15,6 +19,15 @@ type Response struct {
 	Success bool        `json:"succes"`
 	Error   string      `json:"error"`
 	Data    interface{} `json:"data"`
+}
+
+//ResponseUser for client without date and password
+type ResponseUser struct {
+	ID       zero.String `json:"id"`
+	Name     string      `json:"name"`
+	Surname  zero.String `json:"surname"`
+	Email    string      `json:"email"`
+	Username zero.String `json:"username"`
 }
 
 //RegPost - registers with the Post requests
@@ -52,6 +65,8 @@ func RegPost(w http.ResponseWriter, r *http.Request) { //w kuda  ,r otkuda
 		db := conn.DBconnect()
 		defer db.Close()
 		//query for inserrt
+		db.Query("select count(email) from user where email = 1$", user.Email)
+
 		_, err = db.Query("insert into users (name,email,registerdate,password) values($1,$2,$3,$4)", user.Name, user.Email, time.Now(), user.Password)
 		if err != nil {
 			log.Fatalf("Query %v", err)
@@ -63,15 +78,42 @@ func RegPost(w http.ResponseWriter, r *http.Request) { //w kuda  ,r otkuda
 //RegGet going to send data to user
 //using gmail
 func RegGet(w http.ResponseWriter, r *http.Request) {
+	//we are going to send to the client json
+	w.Header().Add("content-type", "json/application")
 	user := &models.User{}
+	respuser := &ResponseUser{}
+	//127.0.0.1:8080/user/?email=youremail@gmail.com
 	email := r.FormValue("email")
 	db := conn.DBconnect()
 	defer db.Close()
+
 	row := db.QueryRowx("select * from users where email=$1", email)
-	err := row.Scan(user)
-	if err != nil {
-		log.Fatal(err)
+	err := row.StructScan(user)
+	//
+	respuser.Email = user.Email
+	respuser.ID = user.ID
+	respuser.Name = user.Name
+	respuser.Surname = user.Surname
+	respuser.Username = user.Username
+	//
+	resp := &Response{
+		Success: true,
+		Error:   "no error",
+		Data:    respuser,
 	}
-	json.NewEncoder(w).Encode(user)
+	if err != nil {
+		if errors.Cause(err) == sql.ErrNoRows {
+			resp.Error = "user not exist"
+			resp.Success = true
+			resp.Data = nil
+		} else {
+			log.Fatalf("StructScan %v", err)
+			resp.Error = "error"
+			resp.Success = false
+			resp.Data = nil
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	json.NewEncoder(w).Encode(resp)
 
 }
