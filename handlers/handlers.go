@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"projects/server/conn"
 	"projects/server/models"
-	"time"
 
+	"github.com/bejaneps/nullidea/crud"
 	"github.com/pkg/errors"
 )
 
@@ -48,11 +48,9 @@ func RegPost(w http.ResponseWriter, r *http.Request) {
 		db := conn.DBconnect()
 		defer db.Close()
 		//query for inserrt
-		db.Query("select count(email) from user where email = 1$", user.Email)
-
-		_, err = db.Query("insert into users (name,email,registerdate,password) values($1,$2,$3,$4)", user.Name, user.Email, time.Now(), user.Password)
+		err = crud.RegisterUser(user)
 		if err != nil {
-			log.Fatalf("Query %v", err)
+			log.Fatalf("%s %v", op, err)
 		}
 	}
 	fmt.Println("connected")
