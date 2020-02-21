@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"projects/server/conn"
 	"projects/server/models"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
@@ -84,6 +85,9 @@ func RegGet(w http.ResponseWriter, r *http.Request) {
 	respuser := &ResponseUser{}
 	//127.0.0.1:8080/user/?email=youremail@gmail.com
 	email := r.FormValue("email")
+	if email == "" {
+		w.WriteHeader(http.StatusBadRequest)
+	}
 	db := conn.DBconnect()
 	defer db.Close()
 
@@ -116,4 +120,96 @@ func RegGet(w http.ResponseWriter, r *http.Request) {
 	}
 	json.NewEncoder(w).Encode(resp)
 
+}
+
+//ReqDelete deletes the user by email
+func ReqDelete(w http.ResponseWriter, r *http.Request) {
+	op := "ReqDelete"
+	email := r.FormValue("email")
+	db := conn.DBconnect()
+	defer db.Close()
+	_, err := db.Query("DELETE from users where email=$1", email)
+	if err != nil {
+		log.Fatalf("%s %v", op, err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+//ReqPut updtates the data
+func ReqPut(w http.ResponseWriter, r *http.Request) {
+	op := "handlers/ReqPut"
+	email := r.FormValue("email")
+	if r.Header.Get("content-type") != "json/application" {
+		newuser := &models.User{}
+		dbuser := &models.User{}
+		db := conn.DBconnect()
+		defer db.Close()
+		row := db.QueryRowx("select * from users where email=$1", email)
+		err := row.StructScan(dbuser)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			log.Fatalf("%s %v", op, err)
+		}
+		json.NewDecoder(r.Body).Decode(newuser)
+		change(dbuser, newuser)
+		//deleting old data
+		_, err = db.Query("DELETE from users where email=$1", email)
+		if err != nil {
+			log.Fatalf("%s %v", op, err)
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		//inserting new
+		_, err = db.Query("insert into users (id,name,email,surname,username,password,registerdate) values($1,$2,$3,$4,$5,$6,$7)", dbuser.ID, dbuser.Name, dbuser.Email, dbuser.Surname, dbuser.Username, dbuser.Password, dbuser.RegisterDate)
+		if err != nil {
+			log.Fatalf("Query %v", err)
+		}
+		//fmt.Println(dbuser)
+	} else {
+		log.Fatalf("%s the type is not json", op)
+		w.WriteHeader(http.StatusBadRequest)
+	}
+}
+
+func change(d *models.User, new *models.User) {
+	w := &sync.WaitGroup{}
+	w.Add(7)
+	go func() {
+		if (*new).Name != "" {
+			(*d).Name = (*new).Name
+		}
+		w.Done()
+	}()
+	go func() {
+		if (*new).Password != "" {
+			(*d).Password = (*new).Password
+		}
+		w.Done()
+	}()
+	go func() {
+		if (*new).Surname.IsZero() != true {
+			(*d).Surname = (*new).Surname
+		}
+		w.Done()
+	}()
+	go func() {
+		if (*new).Username.IsZero() != true {
+			(*d).Username = (*new).Username
+		}
+		w.Done()
+	}()
+	go func() {
+		if (*new).Email != "" {
+			(*d).Email = (*new).Email
+		}
+		w.Done()
+	}()
+	go func() {
+		(*d).RegisterDate = (*d).RegisterDate
+		w.Done()
+	}()
+	go func() {
+		(*d).ID = (*d).ID
+		w.Done()
+	}()
+	w.Wait()
 }
