@@ -8,31 +8,13 @@ import (
 	"net/http"
 	"projects/server/conn"
 	"projects/server/models"
-	"sync"
 	"time"
 
 	"github.com/pkg/errors"
-	"gopkg.in/guregu/null.v3/zero"
 )
 
-//Response for client
-type Response struct {
-	Success bool        `json:"succes"`
-	Error   string      `json:"error"`
-	Data    interface{} `json:"data"`
-}
-
-//ResponseUser for client without date and password
-type ResponseUser struct {
-	ID       zero.String `json:"id"`
-	Name     string      `json:"name"`
-	Surname  zero.String `json:"surname"`
-	Email    string      `json:"email"`
-	Username zero.String `json:"username"`
-}
-
 //RegPost - registers with the Post requests
-func RegPost(w http.ResponseWriter, r *http.Request) { //w kuda  ,r otkuda
+func RegPost(w http.ResponseWriter, r *http.Request) {
 	op := "handlers/RegPost"
 	//below : will determine what format request is
 	if "application/json" == r.Header.Get("Content-Type") {
@@ -40,7 +22,7 @@ func RegPost(w http.ResponseWriter, r *http.Request) { //w kuda  ,r otkuda
 		//setting to json in order to help client understand
 		w.Header().Add("Content-type", "application/json")
 		//creating response for ok
-		resp := &Response{
+		resp := &models.Response{
 			Success: true,
 			Error:   "no error",
 			Data:    nil,
@@ -82,7 +64,7 @@ func RegGet(w http.ResponseWriter, r *http.Request) {
 	//we are going to send to the client json
 	w.Header().Add("content-type", "json/application")
 	user := &models.User{}
-	respuser := &ResponseUser{}
+	respuser := &models.ResponseUser{}
 	//127.0.0.1:8080/user/?email=youremail@gmail.com
 	email := r.FormValue("email")
 	if email == "" {
@@ -100,7 +82,7 @@ func RegGet(w http.ResponseWriter, r *http.Request) {
 	respuser.Surname = user.Surname
 	respuser.Username = user.Username
 	//
-	resp := &Response{
+	resp := &models.Response{
 		Success: true,
 		Error:   "no error",
 		Data:    respuser,
@@ -125,11 +107,23 @@ func RegGet(w http.ResponseWriter, r *http.Request) {
 //ReqDelete deletes the user by email
 func ReqDelete(w http.ResponseWriter, r *http.Request) {
 	op := "ReqDelete"
+	resp := &models.Response{
+		Success: true,
+		Error:   "no error",
+		Data:    nil,
+	}
 	email := r.FormValue("email")
 	db := conn.DBconnect()
 	defer db.Close()
 	_, err := db.Query("DELETE from users where email=$1", email)
 	if err != nil {
+		if errors.Cause(err) == sql.ErrNoRows {
+			resp.Success = false
+			resp.Error = "user not exist"
+			w.WriteHeader(http.StatusBadRequest)
+		}
+		resp.Success = false
+		resp.Error = "error"
 		log.Fatalf("%s %v", op, err)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
@@ -168,48 +162,4 @@ func ReqPut(w http.ResponseWriter, r *http.Request) {
 		log.Fatalf("%s the type is not json", op)
 		w.WriteHeader(http.StatusBadRequest)
 	}
-}
-
-func change(d *models.User, new *models.User) {
-	w := &sync.WaitGroup{}
-	w.Add(7)
-	go func() {
-		if (*new).Name != "" {
-			(*d).Name = (*new).Name
-		}
-		w.Done()
-	}()
-	go func() {
-		if (*new).Password != "" {
-			(*d).Password = (*new).Password
-		}
-		w.Done()
-	}()
-	go func() {
-		if (*new).Surname.IsZero() != true {
-			(*d).Surname = (*new).Surname
-		}
-		w.Done()
-	}()
-	go func() {
-		if (*new).Username.IsZero() != true {
-			(*d).Username = (*new).Username
-		}
-		w.Done()
-	}()
-	go func() {
-		if (*new).Email != "" {
-			(*d).Email = (*new).Email
-		}
-		w.Done()
-	}()
-	go func() {
-		(*d).RegisterDate = (*d).RegisterDate
-		w.Done()
-	}()
-	go func() {
-		(*d).ID = (*d).ID
-		w.Done()
-	}()
-	w.Wait()
 }
