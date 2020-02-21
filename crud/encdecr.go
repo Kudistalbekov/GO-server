@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-func encrypt(key []byte, plaintext string) string {
+func myencrypt(key []byte, plaintext string) string {
 	c, err := aes.NewCipher(key)
 	if err != nil {
 		fmt.Errorf("NewCipher(%d bytes) = %s", len(key), err)
