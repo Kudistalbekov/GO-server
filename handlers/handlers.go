@@ -9,7 +9,8 @@ import (
 	"projects/server/conn"
 	"projects/server/models"
 
-	"github.com/bejaneps/nullidea/crud"
+	"projects/server/crud"
+
 	"github.com/pkg/errors"
 )
 
@@ -31,24 +32,24 @@ func RegPost(w http.ResponseWriter, r *http.Request) {
 		//Unmarshal from r.Body to a(User)
 		err := json.NewDecoder(r.Body).Decode(user)
 		if err != nil {
-			log.Fatalf("%s %v", op, err)
 			//changing for not ok
 			resp.Error = err.Error()
 			resp.Success = false
 			resp.Data = nil
 			w.WriteHeader(http.StatusBadRequest)
+			log.Fatalf("%s %v", op, err)
 		}
 		//converting our responsse into json
 		//writing to responsewriter
 		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
-			log.Fatalf("%s %v", op, err)
 			w.WriteHeader(http.StatusInternalServerError)
+			log.Fatalf("%s %v", op, err)
 		}
 		db := conn.DBconnect()
 		defer db.Close()
-		//query for inserrt
-		err = crud.RegisterUser(user)
+		//Registering user
+		err = crud.RegisterUser(user, db)
 		if err != nil {
 			log.Fatalf("%s %v", op, err)
 		}
