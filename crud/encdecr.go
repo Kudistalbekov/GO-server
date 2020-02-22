@@ -18,7 +18,7 @@ func myencrypt(key []byte, plaintext string) string {
 	return hex.EncodeToString(out)
 }
 
-func decrypt(key []byte, ct string) {
+func decrypt(key []byte, ct string) string {
 	ciphertext, _ := hex.DecodeString(ct)
 	c, err := aes.NewCipher(key)
 	if err != nil {
@@ -28,5 +28,5 @@ func decrypt(key []byte, ct string) {
 	plain := make([]byte, len(ciphertext))
 	c.Decrypt(plain, ciphertext)
 	s := string(plain[:])
-	fmt.Printf("AES Decrypyed Text:  %s\n", s)
+	return s
 }
