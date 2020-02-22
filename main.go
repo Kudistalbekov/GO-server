@@ -11,7 +11,7 @@ import (
 
 func main() {
 	router := mux.NewRouter() //creating new multiplexer
-	router.HandleFunc("/user/", handlers.RegPost).Methods("POST")
+	router.HandleFunc("/user/", handlers.handleError(handlers.RegPost)).Methods("POST")
 	router.HandleFunc("/user/", handlers.RegGet).Methods("GET").Queries("email", "")
 	router.HandleFunc("/user/", handlers.ReqDelete).Methods("DELETE").Queries("email", "")
 	router.HandleFunc("/user/", handlers.ReqPut).Methods("PUT").Queries("email", "")
