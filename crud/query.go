@@ -22,7 +22,7 @@ func RegisterUser(user *models.User, db *sqlx.DB) error {
 	}
 	key := "myverystrongpasswordo32bitlength"
 	c := myencrypt([]byte(key), user.Password+" 8gwifi.org")
-	_, err := db.Query("insert into users (name,email,registerdate,password,surname,username) values($1,$2,$3,$4,$5,$6)", user.Name, user.Email, time.Now(), user.Password, user.Surname, user.Username)
+	_, err := db.Query("insert into users (name,email,registerdate,password,surname,username) values($1,$2,$3,$4,$5,$6)", user.Name, user.Email, time.Now(), c, user.Surname, user.Username)
 	if err != nil {
 		return errors.Wrap(err, op)
 	}
