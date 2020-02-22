@@ -30,10 +30,6 @@ func RegPost(w http.ResponseWriter, r *http.Request) {
 
 		err := json.NewDecoder(r.Body).Decode(user) //r.Body is what client sent and (a is user)
 		if err != nil {                             //Unmarshal from r.Body to a(User)
-			resp.Error = err.Error()
-			resp.Success = false
-			resp.Data = nil
-			json.NewEncoder(w).Encode(resp)
 			w.WriteHeader(http.StatusBadRequest)
 			log.Fatalf("%s %v", op, err)
 		}
@@ -49,7 +45,6 @@ func RegPost(w http.ResponseWriter, r *http.Request) {
 				json.NewEncoder(w).Encode(resp)
 			}
 			return
-			//log.Fatalf("%s %v", op, err)
 		}
 
 		json.NewEncoder(w).Encode(resp) //converting our responsse into json and writing to responsewriter
