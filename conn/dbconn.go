@@ -1,7 +1,6 @@
 package conn
 
 import (
-	"fmt"
 	"log"
 
 	"github.com/jmoiron/sqlx"
@@ -17,6 +16,5 @@ func DBconnect() *sqlx.DB {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("db connected")
 	return db
 }

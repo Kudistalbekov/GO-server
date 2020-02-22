@@ -14,11 +14,10 @@ func myencrypt(key []byte, plaintext string) string {
 	}
 	out := make([]byte, len(plaintext))
 	c.Encrypt(out, []byte(plaintext))
-
 	return hex.EncodeToString(out)
 }
 
-func decrypt(key []byte, ct string) string {
+func Decrypt(key []byte, ct string) string {
 	ciphertext, _ := hex.DecodeString(ct)
 	c, err := aes.NewCipher(key)
 	if err != nil {
