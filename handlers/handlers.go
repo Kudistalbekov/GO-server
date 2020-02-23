@@ -15,23 +15,16 @@ import (
 )
 
 //RegPost - registers with the Post requests
-func RegPost(w http.ResponseWriter, r *http.Request) {
-	op := "handlers/RegPost"
+func RegPost(w http.ResponseWriter, r *http.Request) (string, int, interface{}, error) {
+	//op := "handlers/RegPost"
 	if "application/json" == r.Header.Get("Content-Type") { // will determine what format request is
 		user := &models.User{} ///creating empty user
 
 		w.Header().Add("Content-type", "application/json") //setting to json in order to help client understand
 
-		resp := &models.Response{ //creating response for ok
-			Success: true,
-			Error:   "no error",
-			Data:    nil,
-		}
-
-		err := json.NewDecoder(r.Body).Decode(user) //r.Body is what client sent and (a is user)
+		err := json.NewDecoder(r.Body).Decode(user) //r.Body is what client sent
 		if err != nil {                             //Unmarshal from r.Body to a(User)
-			w.WriteHeader(http.StatusBadRequest)
-			log.Fatalf("%s %v", op, err)
+			return "user", http.StatusBadRequest, nil, err
 		}
 
 		db := conn.DBconnect()
@@ -40,28 +33,27 @@ func RegPost(w http.ResponseWriter, r *http.Request) {
 		err = crud.RegisterUser(user, db) //Registering user
 		if err != nil {
 			if err == crud.UserExistAlready {
-				resp.Success = true
-				resp.Error = "user exist already"
-				json.NewEncoder(w).Encode(resp)
+				return "user", http.StatusBadRequest, nil, errors.New("user already exist")
 			}
-			return
+			return "system", http.StatusInternalServerError, nil, err
 		}
 
-		json.NewEncoder(w).Encode(resp) //converting our responsse into json and writing to responsewriter
+		return " ", http.StatusOK, "registered", nil
+
 	}
+	return "user", http.StatusBadRequest, r.Header.Get("content-type"), errors.New("format is not json")
 }
 
 //RegGet going to send data to user
 //using gmail
-func RegGet(w http.ResponseWriter, r *http.Request) {
+func RegGet(w http.ResponseWriter, r *http.Request) (string, int, interface{}, error) {
 
-	w.Header().Add("content-type", "json/application") //we are going to send to the client json
 	user := &models.User{}
 	respuser := &models.ResponseUser{}
 	email := r.FormValue("email") //127.0.0.1:8080/user/?email=youremail@gmail.com
 
 	if email == "" {
-		w.WriteHeader(http.StatusBadRequest)
+		return "user", http.StatusBadRequest, nil, errors.New("email is empty")
 	}
 	db := conn.DBconnect()
 	defer db.Close()
@@ -70,44 +62,27 @@ func RegGet(w http.ResponseWriter, r *http.Request) {
 	//err := row.StructScan(user)
 	err := crud.GetUserByEmail(email, db).StructScan(user)
 
+	if err != nil {
+		if errors.Cause(err) == sql.ErrNoRows {
+			return "user", http.StatusBadRequest, nil, errors.New("user does not exist")
+		}
+		return "system", http.StatusInternalServerError, nil, err
+	}
+
 	respuser.Email = user.Email
 	respuser.ID = user.ID
 	respuser.Name = user.Name
 	respuser.Surname = user.Surname
 	respuser.Username = user.Username
 
-	resp := &models.Response{
-		Success: true,
-		Error:   "no error",
-		Data:    respuser,
-	}
-	if err != nil {
-		if errors.Cause(err) == sql.ErrNoRows {
-			resp.Error = "user not exist"
-			resp.Success = true
-			resp.Data = nil
-		} else {
-			log.Fatalf("StructScan %v", err)
-			resp.Error = "error"
-			resp.Success = false
-			resp.Data = nil
-		}
-		w.WriteHeader(http.StatusInternalServerError)
-	}
-	json.NewEncoder(w).Encode(resp)
-
+	return "", http.StatusOK, respuser, nil
 }
 
 //ReqDelete deletes the user by email
-func ReqDelete(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("content-type", "json/application")
+func ReqDelete(w http.ResponseWriter, r *http.Request) (string, int, interface{}, error) {
+	w.Header().Add("content-type", "application/json")
 
 	op := "ReqDelete"
-	resp := &models.Response{
-		Success: true,
-		Error:   "no error",
-		Data:    nil,
-	}
 
 	email := r.FormValue("email")
 
@@ -117,30 +92,25 @@ func ReqDelete(w http.ResponseWriter, r *http.Request) {
 	err := crud.DeleteUser(email, db)
 	if err != nil {
 		if errors.Cause(err) == sql.ErrNoRows {
-			resp.Success = true
-			resp.Error = "user not exist"
-			w.WriteHeader(http.StatusBadRequest)
+			return "user", http.StatusBadRequest, nil, errors.New("user not exist")
+			log.Fatalf("%s %v", op, err)
 		}
-		resp.Success = false
-		resp.Error = "error"
-		w.WriteHeader(http.StatusInternalServerError)
+		return "system", http.StatusInternalServerError, nil, err
 		log.Fatalf("%s %v", op, err)
 	}
 
-	json.NewEncoder(w).Encode(resp)
+	return "", http.StatusOK, "user deleted", nil
 }
 
 //ReqPut updtates the data
-func ReqPut(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("content-type", "json/application")
+func ReqPut(w http.ResponseWriter, r *http.Request) (string, int, interface{}, error) {
+	w.Header().Add("content-type", "application/json")
 	op := "handlers/ReqPut"
 	email := r.FormValue("email")
-	resp := &models.Response{
-		Success: true,
-		Error:   "no error",
-		Data:    nil,
+	if email == "" {
+		return "user", http.StatusBadRequest, nil, errors.New("empty email")
 	}
-	if r.Header.Get("content-type") != "json/application" {
+	if r.Header.Get("content-type") == "application/json" {
 
 		newuser := &models.User{}
 		dbuser := &models.User{}
@@ -152,22 +122,15 @@ func ReqPut(w http.ResponseWriter, r *http.Request) {
 
 		if err != nil {
 			if errors.Cause(err) == sql.ErrNoRows {
-				resp.Error = "user not exist"
-				json.NewEncoder(w).Encode(resp)
-				fmt.Println("%s %v", op, resp.Error)
-				return
+				return "user", http.StatusBadRequest, nil, errors.New("user not exist")
 			}
-			resp.Error = "error"
-			resp.Success = false
-			json.NewEncoder(w).Encode(resp)
-			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Println("%s %v", op, err)
-			return
+			return "system", http.StatusInternalServerError, nil, err
 		}
 
 		err = json.NewDecoder(r.Body).Decode(newuser)
 		if err != nil {
-			log.Fatal(err)
+			return "system", http.StatusInternalServerError, nil, err
 		}
 
 		change(dbuser, newuser)
@@ -176,28 +139,21 @@ func ReqPut(w http.ResponseWriter, r *http.Request) {
 		err = crud.DeleteUser(email, db)
 		if err != nil {
 			if errors.Cause(err) == sql.ErrNoRows {
-				w.WriteHeader(http.StatusBadRequest)
+				return "user", http.StatusBadRequest, nil, errors.New("user not exist")
 			}
-			w.WriteHeader(http.StatusInternalServerError)
-			log.Fatalf("%s %v", op, err)
+			return "system", http.StatusInternalServerError, nil, err
 		}
 
 		//inserting new
 		err = crud.RegisterUser(dbuser, db)
 		if err != nil {
 			if err == crud.UserExistAlready {
-				resp.Success = true
-				resp.Error = "user exist already"
-				json.NewEncoder(w).Encode(resp)
+				return "user", http.StatusBadRequest, nil, errors.New("user already exist")
 			}
-			w.WriteHeader(http.StatusBadRequest)
+			return "system", http.StatusInternalServerError, nil, err
 		}
-		json.NewEncoder(w).Encode(resp)
+		return "", http.StatusOK, "user updated", nil
 
-	} else {
-		resp.Success = false
-		resp.Error = "%s the type is not json"
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(resp)
 	}
+	return "user", http.StatusBadRequest, r.Header.Get("content-type"), errors.New("request is not json type")
 }
