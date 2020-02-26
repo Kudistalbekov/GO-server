@@ -16,7 +16,7 @@ import (
 
 //RegPost - registers with the Post requests
 func RegPost(w http.ResponseWriter, r *http.Request) (string, int, interface{}, error) {
-	//op := "handlers/RegPost"
+	op := "handlers.RegPost"
 	if "application/json" == r.Header.Get("Content-Type") { // will determine what format request is
 		user := &models.User{} ///creating empty user
 
@@ -30,12 +30,12 @@ func RegPost(w http.ResponseWriter, r *http.Request) (string, int, interface{}, 
 		db := conn.DBconnect()
 		defer db.Close()
 
-		err = crud.RegisterUser(user, db) //Registering user
+		err = crud.RegisterUser(user, db)
 		if err != nil {
 			if err == crud.UserExistAlready {
 				return "user", http.StatusBadRequest, nil, errors.New("user already exist")
 			}
-			return "system", http.StatusInternalServerError, nil, err
+			return "system", http.StatusInternalServerError, nil, errors.Wrap(err, op)
 		}
 
 		return " ", http.StatusOK, "registered", nil
@@ -47,7 +47,7 @@ func RegPost(w http.ResponseWriter, r *http.Request) (string, int, interface{}, 
 //RegGet going to send data to user
 //using gmail
 func RegGet(w http.ResponseWriter, r *http.Request) (string, int, interface{}, error) {
-
+	op := "handlers.RegGet"
 	user := &models.User{}
 	respuser := &models.ResponseUser{}
 	email := r.FormValue("email") //127.0.0.1:8080/user/?email=youremail@gmail.com
@@ -66,7 +66,7 @@ func RegGet(w http.ResponseWriter, r *http.Request) (string, int, interface{}, e
 		if errors.Cause(err) == sql.ErrNoRows {
 			return "user", http.StatusBadRequest, nil, errors.New("user does not exist")
 		}
-		return "system", http.StatusInternalServerError, nil, err
+		return "system", http.StatusInternalServerError, nil, errors.Wrap(err, op)
 	}
 
 	respuser.Email = user.Email
@@ -82,7 +82,7 @@ func RegGet(w http.ResponseWriter, r *http.Request) (string, int, interface{}, e
 func ReqDelete(w http.ResponseWriter, r *http.Request) (string, int, interface{}, error) {
 	w.Header().Add("content-type", "application/json")
 
-	op := "ReqDelete"
+	op := "handlers.ReqDelete"
 
 	email := r.FormValue("email")
 
@@ -95,7 +95,7 @@ func ReqDelete(w http.ResponseWriter, r *http.Request) (string, int, interface{}
 			return "user", http.StatusBadRequest, nil, errors.New("user not exist")
 			log.Fatalf("%s %v", op, err)
 		}
-		return "system", http.StatusInternalServerError, nil, err
+		return "system", http.StatusInternalServerError, nil, errors.Wrap(err, op)
 		log.Fatalf("%s %v", op, err)
 	}
 
@@ -105,7 +105,7 @@ func ReqDelete(w http.ResponseWriter, r *http.Request) (string, int, interface{}
 //ReqPut updtates the data
 func ReqPut(w http.ResponseWriter, r *http.Request) (string, int, interface{}, error) {
 	w.Header().Add("content-type", "application/json")
-	op := "handlers/ReqPut"
+	op := "handlers.ReqPut"
 	email := r.FormValue("email")
 	if email == "" {
 		return "user", http.StatusBadRequest, nil, errors.New("empty email")
@@ -125,12 +125,12 @@ func ReqPut(w http.ResponseWriter, r *http.Request) (string, int, interface{}, e
 				return "user", http.StatusBadRequest, nil, errors.New("user not exist")
 			}
 			fmt.Println("%s %v", op, err)
-			return "system", http.StatusInternalServerError, nil, err
+			return "system", http.StatusInternalServerError, nil, errors.Wrap(err, op)
 		}
 
 		err = json.NewDecoder(r.Body).Decode(newuser)
 		if err != nil {
-			return "system", http.StatusInternalServerError, nil, err
+			return "system", http.StatusInternalServerError, nil, errors.Wrap(err, op)
 		}
 
 		change(dbuser, newuser)
@@ -141,7 +141,7 @@ func ReqPut(w http.ResponseWriter, r *http.Request) (string, int, interface{}, e
 			if errors.Cause(err) == sql.ErrNoRows {
 				return "user", http.StatusBadRequest, nil, errors.New("user not exist")
 			}
-			return "system", http.StatusInternalServerError, nil, err
+			return "system", http.StatusInternalServerError, nil, errors.Wrap(err, op)
 		}
 
 		//inserting new
@@ -150,7 +150,7 @@ func ReqPut(w http.ResponseWriter, r *http.Request) (string, int, interface{}, e
 			if err == crud.UserExistAlready {
 				return "user", http.StatusBadRequest, nil, errors.New("user already exist")
 			}
-			return "system", http.StatusInternalServerError, nil, err
+			return "system", http.StatusInternalServerError, nil, errors.Wrap(err, op)
 		}
 		return "", http.StatusOK, "user updated", nil
 

@@ -12,6 +12,7 @@ type Myhandle func(http.ResponseWriter, *http.Request) (string, int, interface{}
 
 //HandleError takes my func and handles his response
 func HandleError(a Myhandle) http.HandlerFunc {
+	op := "HandleError"
 	return func(w http.ResponseWriter, r *http.Request) {
 		kind, status, data, err := a(w, r)
 		resp := &models.Response{ //creating response for ok
@@ -25,7 +26,7 @@ func HandleError(a Myhandle) http.HandlerFunc {
 				resp.Error = err.Error()
 			} else if kind == "system" {
 				resp.Success = false
-				log.Printf("%v %v", kind, err.Error())
+				log.Printf("%s:%v->", op, err.Error())
 			}
 		}
 		w.WriteHeader(status)
